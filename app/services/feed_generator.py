@@ -1,3 +1,4 @@
+from datetime import timezone
 from feedgen.feed import FeedGenerator
 from sqlalchemy.orm import Session
 
@@ -32,7 +33,10 @@ def generate_feed(db: Session) -> str:
         fe.title(article.title or article.url)
         fe.link(href=article.url)
         fe.description(f"Narrated version of: {article.url}")
-        fe.published(article.created_at)
+        published = article.created_at
+        if published and published.tzinfo is None:
+            published = published.replace(tzinfo=timezone.utc)
+        fe.published(published)
 
         if article.audio_filename:
             audio_url = article.audio_url or "{}/audio/{}".format(BASE_URL, article.audio_filename)
