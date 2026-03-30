@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bellandur Blues</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+        .subtitle { color: #888; margin-bottom: 2rem; }
+        .add-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        .add-form input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+        .add-form input::placeholder { color: #555; }
+        .add-form input:focus { outline: none; border-color: #4a9eff; }
+        .add-form button {
+            padding: 0.75rem 1.5rem;
+            background: #4a9eff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .add-form button:hover { background: #3a8eef; }
+        .feed-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            color: #4a9eff;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .feed-link:hover { text-decoration: underline; }
+        .articles { display: flex; flex-direction: column; gap: 1rem; }
+        .article {
+            background: #1a1a1a;
+            border: 1px solid #252525;
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+        .article-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        .article-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        .article-title a { color: inherit; text-decoration: none; }
+        .article-title a:hover { text-decoration: underline; }
+        .article-meta { color: #666; font-size: 0.85rem; margin-top: 0.3rem; }
+        .status {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .status-pending { background: #2a2a00; color: #cccc00; }
+        .status-extracting, .status-extracted, .status-generating { background: #002a2a; color: #00cccc; }
+        .status-ready { background: #002a00; color: #00cc00; }
+        .status-failed { background: #2a0000; color: #cc0000; }
+        .article-player { margin-top: 0.75rem; }
+        .article-player audio { width: 100%; height: 36px; }
+        .article-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
+        .btn-small {
+            padding: 0.3rem 0.7rem;
+            font-size: 0.8rem;
+            border: 1px solid #333;
+            background: transparent;
+            color: #888;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-small:hover { border-color: #555; color: #ccc; }
+        .btn-danger:hover { border-color: #cc0000; color: #cc0000; }
+        .empty { color: #555; text-align: center; padding: 3rem; }
+    </style>
+</head>
+<body>
+    <h1>Bellandur Blues</h1>
+    <p class="subtitle">Your articles, narrated.</p>
+
+    <form class="add-form" onsubmit="addArticle(event)">
+        <input type="url" id="url-input" placeholder="Paste an article URL..." required>
+        <button type="submit">Add</button>
+    </form>
+
+    <a href="/feed.xml" class="feed-link">Podcast RSS Feed</a>
+
+    <div class="articles" id="articles"></div>
+
+    <script>
+        async function loadArticles() {
+            const res = await fetch("/articles");
+            const articles = await res.json();
+            const container = document.getElementById("articles");
+
+            if (articles.length === 0) {
+                container.innerHTML = '<div class="empty">No articles yet. Paste a URL above to get started.</div>';
+                return;
+            }
+
+            container.innerHTML = articles.map(a => `
+                <div class="article">
+                    <div class="article-header">
+                        <div>
+                            <div class="article-title">
+                                <a href="${a.url}" target="_blank">${a.title || a.url}</a>
+                            </div>
+                            <div class="article-meta">
+                                ${a.author ? a.author + " · " : ""}${a.status}
+                                ${a.audio_duration_seconds ? " · " + formatDuration(a.audio_duration_seconds) : ""}
+                            </div>
+                        </div>
+                        <span class="status status-${a.status}">${a.status}</span>
+                    </div>
+                    ${a.status === "ready" && a.audio_filename ? `
+                        <div class="article-player">
+                            <audio controls preload="none" src="/audio/${a.audio_filename}"></audio>
+                        </div>
+                    ` : ""}
+                    ${a.error ? `<div class="article-meta" style="color:#cc0000;margin-top:0.5rem">${a.error}</div>` : ""}
+                    <div class="article-actions">
+                        ${["failed", "ready"].includes(a.status) ? `<button class="btn-small" onclick="regenerate(${a.id})">Regenerate</button>` : ""}
+                        <button class="btn-small btn-danger" onclick="deleteArticle(${a.id})">Delete</button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        async function addArticle(e) {
+            e.preventDefault();
+            const input = document.getElementById("url-input");
+            const url = input.value.trim();
+            if (!url) return;
+
+            await fetch("/articles", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url }),
+            });
+            input.value = "";
+            loadArticles();
+            // Poll for status updates
+            startPolling();
+        }
+
+        async function deleteArticle(id) {
+            await fetch(`/articles/${id}`, { method: "DELETE" });
+            loadArticles();
+        }
+
+        async function regenerate(id) {
+            await fetch(`/articles/${id}/regenerate`, { method: "POST" });
+            loadArticles();
+            startPolling();
+        }
+
+        function formatDuration(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m}:${s.toString().padStart(2, "0")}`;
+        }
+
+        let pollInterval = null;
+        function startPolling() {
+            if (pollInterval) return;
+            pollInterval = setInterval(async () => {
+                const res = await fetch("/articles");
+                const articles = await res.json();
+                const processing = articles.some(a =>
+                    ["pending", "extracting", "extracted", "generating"].includes(a.status)
+                );
+                loadArticles();
+                if (!processing) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            }, 3000);
+        }
+
+        loadArticles();
+    </script>
+</body>
+</html>
