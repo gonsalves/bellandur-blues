@@ -25,6 +25,7 @@ class ArticleResponse(BaseModel):
     status: ArticleStatus
     error: Optional[str]
     audio_filename: Optional[str]
+    audio_url: Optional[str]
     audio_duration_seconds: Optional[int]
 
     class Config:
@@ -54,8 +55,9 @@ def _process_article(article_id: int):
         article.status = ArticleStatus.generating
         db.commit()
 
-        filename, duration = generate_audio(article.text)
+        filename, audio_url, duration = generate_audio(article.text)
         article.audio_filename = filename
+        article.audio_url = audio_url
         article.audio_duration_seconds = duration
         article.status = ArticleStatus.ready
         db.commit()
@@ -102,9 +104,16 @@ def get_article(article_id: int, db: Session = Depends(get_db)):
 
 @router.delete("/{article_id}", status_code=204)
 def delete_article(article_id: int, db: Session = Depends(get_db)):
+    from app.services.storage import delete_audio
+
     article = db.query(Article).get(article_id)
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    if article.audio_filename:
+        try:
+            delete_audio(article.audio_filename)
+        except Exception:
+            pass  # Don't block deletion if storage cleanup fails
     db.delete(article)
     db.commit()
 

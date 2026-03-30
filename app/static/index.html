@@ -1,197 +1,224 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bellandur Blues</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: 'hsl(var(--border))',
+                        input: 'hsl(var(--input))',
+                        ring: 'hsl(var(--ring))',
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        primary: {
+                            DEFAULT: 'hsl(var(--primary))',
+                            foreground: 'hsl(var(--primary-foreground))',
+                        },
+                        secondary: {
+                            DEFAULT: 'hsl(var(--secondary))',
+                            foreground: 'hsl(var(--secondary-foreground))',
+                        },
+                        destructive: {
+                            DEFAULT: 'hsl(var(--destructive))',
+                            foreground: 'hsl(var(--destructive-foreground))',
+                        },
+                        muted: {
+                            DEFAULT: 'hsl(var(--muted))',
+                            foreground: 'hsl(var(--muted-foreground))',
+                        },
+                        accent: {
+                            DEFAULT: 'hsl(var(--accent))',
+                            foreground: 'hsl(var(--accent-foreground))',
+                        },
+                        card: {
+                            DEFAULT: 'hsl(var(--card))',
+                            foreground: 'hsl(var(--card-foreground))',
+                        },
+                    },
+                    borderRadius: {
+                        lg: 'var(--radius)',
+                        md: 'calc(var(--radius) - 2px)',
+                        sm: 'calc(var(--radius) - 4px)',
+                    },
+                },
+            },
+        }
+    </script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #0f0f0f;
-            color: #e0e0e0;
-            min-height: 100vh;
-            padding: 2rem;
+        /* shadcn dark theme tokens */
+        :root {
+            --background: 240 10% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 240 10% 3.9%;
+            --card-foreground: 0 0% 98%;
+            --primary: 0 0% 98%;
+            --primary-foreground: 240 5.9% 10%;
+            --secondary: 240 3.7% 15.9%;
+            --secondary-foreground: 0 0% 98%;
+            --muted: 240 3.7% 15.9%;
+            --muted-foreground: 240 5% 64.9%;
+            --accent: 240 3.7% 15.9%;
+            --accent-foreground: 0 0% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 0 0% 98%;
+            --border: 240 3.7% 15.9%;
+            --input: 240 3.7% 15.9%;
+            --ring: 240 4.9% 83.9%;
+            --radius: 0.5rem;
         }
-        h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
-        .subtitle { color: #888; margin-bottom: 2rem; }
-        .add-form {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 2rem;
-        }
-        .add-form input {
-            flex: 1;
-            padding: 0.75rem 1rem;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 8px;
-            color: #e0e0e0;
-            font-size: 1rem;
-        }
-        .add-form input::placeholder { color: #555; }
-        .add-form input:focus { outline: none; border-color: #4a9eff; }
-        .add-form button {
-            padding: 0.75rem 1.5rem;
-            background: #4a9eff;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-        .add-form button:hover { background: #3a8eef; }
-        .feed-link {
-            display: inline-block;
-            margin-bottom: 1.5rem;
-            color: #4a9eff;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-        .feed-link:hover { text-decoration: underline; }
-        .articles { display: flex; flex-direction: column; gap: 1rem; }
-        .article {
-            background: #1a1a1a;
-            border: 1px solid #252525;
-            border-radius: 10px;
-            padding: 1.25rem;
-        }
-        .article-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-        .article-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #fff;
-        }
-        .article-title a { color: inherit; text-decoration: none; }
-        .article-title a:hover { text-decoration: underline; }
-        .article-meta { color: #666; font-size: 0.85rem; margin-top: 0.3rem; }
-        .status {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        .status-pending { background: #2a2a00; color: #cccc00; }
-        .status-extracting, .status-extracted, .status-generating { background: #002a2a; color: #00cccc; }
-        .status-ready { background: #002a00; color: #00cc00; }
-        .status-failed { background: #2a0000; color: #cc0000; }
-        .article-player { margin-top: 0.75rem; }
-        .article-player audio { width: 100%; height: 36px; }
-        .article-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
-        .btn-small {
-            padding: 0.3rem 0.7rem;
-            font-size: 0.8rem;
-            border: 1px solid #333;
-            background: transparent;
-            color: #888;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .btn-small:hover { border-color: #555; color: #ccc; }
-        .btn-danger:hover { border-color: #cc0000; color: #cc0000; }
-        .empty { color: #555; text-align: center; padding: 3rem; }
+        body { font-feature-settings: "rlig" 1, "calt" 1; }
+        audio::-webkit-media-controls-panel { background: hsl(240 3.7% 15.9%); }
     </style>
 </head>
-<body>
-    <h1>Bellandur Blues</h1>
-    <p class="subtitle">Your articles, narrated.</p>
+<body class="min-h-screen bg-background text-foreground antialiased">
+    <div class="mx-auto max-w-2xl px-4 py-10">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold tracking-tight">Bellandur Blues</h1>
+            <p class="mt-1 text-muted-foreground">Your articles, narrated.</p>
+        </div>
 
-    <form class="add-form" onsubmit="addArticle(event)">
-        <input type="url" id="url-input" placeholder="Paste an article URL..." required>
-        <button type="submit">Add</button>
-    </form>
+        <!-- Add article form -->
+        <form onsubmit="addArticle(event)" class="mb-6 flex gap-2">
+            <input
+                type="url"
+                id="url-input"
+                placeholder="Paste an article URL..."
+                required
+                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+            <button
+                type="submit"
+                class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+                Add
+            </button>
+        </form>
 
-    <a href="/feed.xml" class="feed-link">Podcast RSS Feed</a>
+        <!-- Feed link -->
+        <a href="/feed.xml" class="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+            Podcast RSS Feed
+        </a>
 
-    <div class="articles" id="articles"></div>
+        <!-- Articles list -->
+        <div id="articles" class="mt-4 flex flex-col gap-3"></div>
+    </div>
 
     <script>
-        async function loadArticles() {
-            const res = await fetch("/articles");
-            const articles = await res.json();
-            const container = document.getElementById("articles");
-
-            if (articles.length === 0) {
-                container.innerHTML = '<div class="empty">No articles yet. Paste a URL above to get started.</div>';
-                return;
-            }
-
-            container.innerHTML = articles.map(a => `
-                <div class="article">
-                    <div class="article-header">
-                        <div>
-                            <div class="article-title">
-                                <a href="${a.url}" target="_blank">${a.title || a.url}</a>
-                            </div>
-                            <div class="article-meta">
-                                ${a.author ? a.author + " · " : ""}${a.status}
-                                ${a.audio_duration_seconds ? " · " + formatDuration(a.audio_duration_seconds) : ""}
-                            </div>
-                        </div>
-                        <span class="status status-${a.status}">${a.status}</span>
-                    </div>
-                    ${a.status === "ready" && a.audio_filename ? `
-                        <div class="article-player">
-                            <audio controls preload="none" src="/audio/${a.audio_filename}"></audio>
-                        </div>
-                    ` : ""}
-                    ${a.error ? `<div class="article-meta" style="color:#cc0000;margin-top:0.5rem">${a.error}</div>` : ""}
-                    <div class="article-actions">
-                        ${["failed", "ready"].includes(a.status) ? `<button class="btn-small" onclick="regenerate(${a.id})">Regenerate</button>` : ""}
-                        <button class="btn-small btn-danger" onclick="deleteArticle(${a.id})">Delete</button>
-                    </div>
-                </div>
-            `).join("");
-        }
-
-        async function addArticle(e) {
-            e.preventDefault();
-            const input = document.getElementById("url-input");
-            const url = input.value.trim();
-            if (!url) return;
-
-            await fetch("/articles", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url }),
-            });
-            input.value = "";
-            loadArticles();
-            // Poll for status updates
-            startPolling();
-        }
-
-        async function deleteArticle(id) {
-            await fetch(`/articles/${id}`, { method: "DELETE" });
-            loadArticles();
-        }
-
-        async function regenerate(id) {
-            await fetch(`/articles/${id}/regenerate`, { method: "POST" });
-            loadArticles();
-            startPolling();
+        function statusBadge(status) {
+            const styles = {
+                pending:    'border-yellow-500/30 bg-yellow-500/10 text-yellow-400',
+                extracting: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
+                extracted:  'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
+                generating: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
+                ready:      'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+                failed:     'border-red-500/30 bg-red-500/10 text-red-400',
+            };
+            return `<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${styles[status] || ''}">${status}</span>`;
         }
 
         function formatDuration(seconds) {
             const m = Math.floor(seconds / 60);
             const s = seconds % 60;
-            return `${m}:${s.toString().padStart(2, "0")}`;
+            return m + ':' + s.toString().padStart(2, '0');
+        }
+
+        async function loadArticles() {
+            const res = await fetch('/articles');
+            const articles = await res.json();
+            const container = document.getElementById('articles');
+
+            if (articles.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12 text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-3 text-muted-foreground/50"><path d="M12 11v4"/><path d="M12 3a1 1 0 0 1 .993.883L13 4v2a1 1 0 0 1-1.993.117L11 6V4a1 1 0 0 1 1-1z"/><path d="M17 9H7a5 5 0 0 0-5 5v0a5 5 0 0 0 5 5h10a5 5 0 0 0 5-5v0a5 5 0 0 0-5-5z"/></svg>
+                        <p class="text-sm text-muted-foreground">No articles yet. Paste a URL above to get started.</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = articles.map(a => `
+                <div class="rounded-lg border border-border bg-card p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <a href="${a.url}" target="_blank" rel="noopener"
+                               class="text-sm font-semibold leading-tight text-card-foreground hover:underline">
+                                ${a.title || a.url}
+                            </a>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                ${a.author ? a.author + ' &middot; ' : ''}${a.audio_duration_seconds ? formatDuration(a.audio_duration_seconds) : ''}
+                            </p>
+                        </div>
+                        ${statusBadge(a.status)}
+                    </div>
+
+                    ${a.status === 'ready' && (a.audio_url || a.audio_filename) ? `
+                        <div class="mt-3">
+                            <audio controls preload="none" class="w-full h-9 rounded-md"
+                                   src="${a.audio_url || '/audio/' + a.audio_filename}"></audio>
+                        </div>
+                    ` : ''}
+
+                    ${a.error ? `<p class="mt-2 text-xs text-red-400">${a.error}</p>` : ''}
+
+                    <div class="mt-3 flex gap-2">
+                        ${['failed', 'ready'].includes(a.status) ? `
+                            <button onclick="regenerate(${a.id})"
+                                class="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+                                Regenerate
+                            </button>
+                        ` : ''}
+                        <button onclick="deleteArticle(${a.id})"
+                            class="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:text-red-400">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addArticle(e) {
+            e.preventDefault();
+            const input = document.getElementById('url-input');
+            const url = input.value.trim();
+            if (!url) return;
+
+            await fetch('/articles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url }),
+            });
+            input.value = '';
+            loadArticles();
+            startPolling();
+        }
+
+        async function deleteArticle(id) {
+            await fetch('/articles/' + id, { method: 'DELETE' });
+            loadArticles();
+        }
+
+        async function regenerate(id) {
+            await fetch('/articles/' + id + '/regenerate', { method: 'POST' });
+            loadArticles();
+            startPolling();
         }
 
         let pollInterval = null;
         function startPolling() {
             if (pollInterval) return;
             pollInterval = setInterval(async () => {
-                const res = await fetch("/articles");
+                const res = await fetch('/articles');
                 const articles = await res.json();
                 const processing = articles.some(a =>
-                    ["pending", "extracting", "extracted", "generating"].includes(a.status)
+                    ['pending', 'extracting', 'extracted', 'generating'].includes(a.status)
                 );
                 loadArticles();
                 if (!processing) {

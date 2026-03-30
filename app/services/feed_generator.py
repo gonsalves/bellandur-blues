@@ -35,7 +35,7 @@ def generate_feed(db: Session) -> str:
         fe.published(article.created_at)
 
         if article.audio_filename:
-            audio_url = f"{BASE_URL}/audio/{article.audio_filename}"
+            audio_url = article.audio_url or "{}/audio/{}".format(BASE_URL, article.audio_filename)
             fe.enclosure(audio_url, 0, "audio/mpeg")
 
             if article.audio_duration_seconds:

@@ -73,11 +73,13 @@ async def _generate(text: str, voice: str, filepath: str) -> None:
     await communicate.save(filepath)
 
 
-def generate_audio(text: str, voice: Optional[str] = None) -> Tuple[str, int]:
-    """Generate an MP3 from text using Edge TTS.
+def generate_audio(text: str, voice: Optional[str] = None) -> Tuple[str, str, int]:
+    """Generate an MP3 from text using Edge TTS, then upload to storage.
 
-    Returns (filename, duration_in_seconds).
+    Returns (filename, audio_url, duration_in_seconds).
     """
+    from app.services.storage import upload_audio
+
     voice = voice or TTS_VOICE
     filename = "{}.mp3".format(uuid.uuid4().hex)
     filepath = str(AUDIO_DIR / filename)
@@ -95,4 +97,5 @@ def generate_audio(text: str, voice: Optional[str] = None) -> Tuple[str, int]:
         asyncio.run(_generate(text, voice, filepath))
 
     duration = _get_mp3_duration(filepath)
-    return filename, duration
+    audio_url = upload_audio(filepath, filename)
+    return filename, audio_url, duration

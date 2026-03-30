@@ -28,6 +28,7 @@ class Article(Base):
     status = Column(SAEnum(ArticleStatus), default=ArticleStatus.pending, nullable=False)
     error = Column(Text, nullable=True)
     audio_filename = Column(String, nullable=True)
+    audio_url = Column(String, nullable=True)
     audio_duration_seconds = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
