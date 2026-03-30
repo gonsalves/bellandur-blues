@@ -9,9 +9,7 @@ AUDIO_DIR = BASE_DIR / "audio"
 DATA_DIR = BASE_DIR / "data"
 DATABASE_URL = f"sqlite:///{DATA_DIR / 'bellandur.db'}"
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-TTS_VOICE = os.getenv("TTS_VOICE", "alloy")
-TTS_MODEL = os.getenv("TTS_MODEL", "tts-1-hd")
+TTS_VOICE = os.getenv("TTS_VOICE", "en-US-AndrewMultilingualNeural")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 AUDIO_DIR.mkdir(exist_ok=True)

@@ -1,95 +1,98 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional, Tuple, List
-from openai import OpenAI
-from pydub import AudioSegment
-import io
+import asyncio
 import uuid
+import struct
+from typing import Optional, Tuple
 
-from app.config import OPENAI_API_KEY, TTS_VOICE, TTS_MODEL, AUDIO_DIR
+import edge_tts
 
-# OpenAI TTS has a 4096 character limit per request
-MAX_CHUNK_CHARS = 4000
+from app.config import TTS_VOICE, AUDIO_DIR
 
 
-def _split_text(text: str) -> List[str]:
-    """Split text into chunks that fit within TTS API limits.
+def _get_mp3_duration(filepath: str) -> int:
+    """Estimate MP3 duration in seconds by reading frame headers."""
+    bitrate_table = {
+        1: [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0],
+        2: [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0],
+    }
+    sample_rate_table = {0: 44100, 1: 48000, 2: 32000}
 
-    Splits on paragraph boundaries first, then sentence boundaries if needed.
-    """
-    if len(text) <= MAX_CHUNK_CHARS:
-        return [text]
+    total_frames = 0
+    total_samples = 0
 
-    chunks = []
-    current = ""
+    with open(filepath, "rb") as f:
+        data = f.read()
 
-    paragraphs = text.split("\n\n")
-    for para in paragraphs:
-        if len(current) + len(para) + 2 <= MAX_CHUNK_CHARS:
-            current = f"{current}\n\n{para}" if current else para
-        else:
-            if current:
-                chunks.append(current)
-            # If a single paragraph exceeds the limit, split by sentences
-            if len(para) > MAX_CHUNK_CHARS:
-                sentences = para.replace(". ", ".\n").split("\n")
-                current = ""
-                for sentence in sentences:
-                    if len(current) + len(sentence) + 1 <= MAX_CHUNK_CHARS:
-                        current = f"{current} {sentence}" if current else sentence
-                    else:
-                        if current:
-                            chunks.append(current)
-                        current = sentence
-            else:
-                current = para
+    i = 0
+    while i < len(data) - 4:
+        # Look for frame sync (11 bits set)
+        if data[i] == 0xFF and (data[i + 1] & 0xE0) == 0xE0:
+            header = struct.unpack(">I", data[i : i + 4])[0]
+            version = (header >> 19) & 3  # 3=v1, 2=v2
+            layer = (header >> 17) & 3  # 1=layer3
+            bitrate_idx = (header >> 12) & 0xF
+            sample_idx = (header >> 10) & 3
 
-    if current:
-        chunks.append(current)
+            if version == 3 and layer == 1 and bitrate_idx > 0 and sample_idx in sample_rate_table:
+                bitrate = bitrate_table[1][bitrate_idx] * 1000
+                sample_rate = sample_rate_table[sample_idx]
+                padding = (header >> 9) & 1
+                frame_size = (1152 * bitrate) // (8 * sample_rate) + padding
+                if frame_size > 0:
+                    total_frames += 1
+                    total_samples += 1152
+                    i += frame_size
+                    continue
 
-    return chunks
+            elif version == 2 and layer == 1 and bitrate_idx > 0 and sample_idx in sample_rate_table:
+                bitrate = bitrate_table[2][bitrate_idx] * 1000
+                sample_rate = sample_rate_table[sample_idx]
+                padding = (header >> 9) & 1
+                frame_size = (576 * bitrate) // (8 * sample_rate) + padding
+                if frame_size > 0:
+                    total_frames += 1
+                    total_samples += 576
+                    i += frame_size
+                    continue
+
+        i += 1
+
+    if total_frames > 0 and sample_idx in sample_rate_table:
+        return total_samples // sample_rate_table[sample_idx]
+
+    # Fallback: estimate from file size (assume 48kbps for edge-tts)
+    import os
+    file_size = os.path.getsize(filepath)
+    return file_size // (48000 // 8)
+
+
+async def _generate(text: str, voice: str, filepath: str) -> None:
+    """Run edge-tts to generate an MP3 file."""
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(filepath)
 
 
 def generate_audio(text: str, voice: Optional[str] = None) -> Tuple[str, int]:
-    """Generate an MP3 from text using OpenAI TTS.
+    """Generate an MP3 from text using Edge TTS.
 
     Returns (filename, duration_in_seconds).
     """
-    client = OpenAI(api_key=OPENAI_API_KEY)
     voice = voice or TTS_VOICE
-    chunks = _split_text(text)
+    filename = "{}.mp3".format(uuid.uuid4().hex)
+    filepath = str(AUDIO_DIR / filename)
 
-    if len(chunks) == 1:
-        response = client.audio.speech.create(
-            model=TTS_MODEL,
-            voice=voice,
-            input=chunks[0],
-            response_format="mp3",
-        )
-        filename = f"{uuid.uuid4().hex}.mp3"
-        filepath = AUDIO_DIR / filename
-        response.stream_to_file(str(filepath))
-    else:
-        # Generate each chunk and concatenate
-        combined = AudioSegment.empty()
-        for chunk in chunks:
-            response = client.audio.speech.create(
-                model=TTS_MODEL,
-                voice=voice,
-                input=chunk,
-                response_format="mp3",
-            )
-            audio_bytes = io.BytesIO(response.content)
-            segment = AudioSegment.from_mp3(audio_bytes)
-            combined += segment
+    # edge-tts is async, so run it in an event loop
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                pool.submit(asyncio.run, _generate(text, voice, filepath)).result()
+        else:
+            loop.run_until_complete(_generate(text, voice, filepath))
+    except RuntimeError:
+        asyncio.run(_generate(text, voice, filepath))
 
-        filename = f"{uuid.uuid4().hex}.mp3"
-        filepath = AUDIO_DIR / filename
-        combined.export(str(filepath), format="mp3")
-
-    # Get duration
-    audio = AudioSegment.from_mp3(str(filepath))
-    duration = len(audio) // 1000
-
+    duration = _get_mp3_duration(filepath)
     return filename, duration
